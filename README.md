@@ -6,6 +6,8 @@ This version is done completely in Python as an [embedded domain specific langua
 
 It mostly runs the RASP code as originally specified: 
 
+## Code for recognizing shuffled Dyck-2 Languages
+
 ```python
 def frac_prevs(sop, val):
     prevs = select(indices, indices, le)
