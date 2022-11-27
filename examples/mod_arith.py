@@ -1,22 +1,29 @@
 import math
-from raspy import *
+
 import numpy as np
+from raspy import *
+
 V = np.arange(13)
 N = 13
 K = 2
 w = K * (2 * math.pi) / N
 
 reverse = select(indices, indices, neq)
+
+
 def argmax(v):
     f = lambda i: v[i]
     return max(range(len(v)), key=f)
 
+
 def dft_out(c, s):
     return c * np.cos(w * V) + s * np.sin(w * V)
+
 
 # Map inputs x,y → cos(wx), cos(wy),sin(wx),sin(wy) with a Discrete Fourier Transform, for some frequency w
 # Multiply and rearrange to get cos(w(x+y))=cos(wx)cos(wy)−sin(wx)sin(wy) and sin(w(x+y))=cos(wx)sin(wy)+sin(wx)cos(wy). By choosing a frequency w =2πnk  we get period dividing n, so this is a function of x + y(mod n )
 # Map to the output logits z with cos(w(x+y))cos(wz)+sin(w(x+y))sin(wz)=cos(w(x+y−z)) - this has the highest logit at z= x+y(modn), so softmax gives the right answer.
+
 
 def algorithm():
     xy = tokens
@@ -29,6 +36,7 @@ def algorithm():
     out = out.map(argmax)
     out = aggregate(select(indices, 0, eq), out)
     return out
+
 
 x = algorithm()([5, 10])
 print(x)
