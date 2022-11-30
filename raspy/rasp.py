@@ -13,11 +13,17 @@ lt = lambda a, b: a < b  # noqa: E731
 le = lambda a, b: a <= b  # noqa: E731
 gt = lambda a, b: a > b  # noqa: E731
 ge = lambda a, b: a >= b  # noqa: E731
+lor = lambda a, b: a or b  # noqa: E731
+land = lambda a, b: a and b  # noqa: E731
 Att = List[List[bool]]
 
 
 # History
+EXAMPLE = "hello"
 
+def set_example(example: Any) -> None:
+    global EXAMPLE
+    EXAMPLE = example
 
 @dataclass
 class Hist:
@@ -83,6 +89,9 @@ class SOp:
     def __eq__(self, x: SOpLike) -> SOp:  # type: ignore
         return SOp.zip(eq, self, wrap(x))
 
+    def __neq__(self, x: SOpLike) -> SOp:  # type: ignore
+        return SOp.zip(neq, self, wrap(x))
+
     def __le__(self, x: SOpLike) -> SOp:
         return SOp.zip(le, self, wrap(x))
 
@@ -139,7 +148,7 @@ class SOp:
 
     def totree(self) -> None:
         def collect(history: Hist) -> None:
-            queue = list([p for p in history.prev])
+            queue = [history]
             seen = {}
             while queue:
                 queue.sort(key=lambda x: x.layer, reverse=True)
@@ -150,19 +159,21 @@ class SOp:
                         continue
                     print()
                     print(f"Layer {cur.layer} Head: {cur.attentions[1]} \n")
-                    for row in cur.attentions[0]:
-                        for v in row:
-                            print(1 if v else 0, end=" ")
-                        print()
+                    out = "    " + " ".join([str(x) for x in EXAMPLE]) + "\n"
+                    out += "    " + "-".join(["-" for x in EXAMPLE]) + "\n"
+                    for e, row in zip(EXAMPLE, cur.attentions[0]):
+                        out += str(e) + " | " + " ".join(["1" if v else " "  for v in row]) + "\n"
+                    print(out)
                     seen[cur.attentions[1], cur.layer] = True
                 queue += cur.prev
 
-        history = self.f(Seq([])).hist
+        history = self(EXAMPLE).f(Seq([])).hist
         print("Number of layers", history.layer)
         collect(history)
 
     def __repr__(self) -> str:
-        return repr(self.toseq())
+        global EXAMPLE
+        return f"out({EXAMPLE})" + repr(self(EXAMPLE).toseq())
 
 
 def raw(x: List[Raw]) -> SOp:
@@ -229,7 +240,13 @@ class Selector:
         return Selector(ret)
 
     def __repr__(self) -> str:
-        return repr(self.tomat())
+        global EXAMPLE
+        mat = self(EXAMPLE).tomat()
+        out = "    " + " ".join([str(x) for x in EXAMPLE]) + "\n"
+        out += "    " + "-".join(["-" for x in EXAMPLE]) + "\n"
+        for e, row in zip(EXAMPLE, mat):
+            out += str(e) + " | " + " ".join(["1" if v else " "  for v in row]) + "\n"
+        return f"out({EXAMPLE})= \n" + out
 
     def __invert__(self) -> Selector:
         return self.map(lambda a: not a)

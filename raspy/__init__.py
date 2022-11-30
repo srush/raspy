@@ -9,7 +9,9 @@ from .rasp import (  # noqa: F401,F403
     indices,
     le,
     lt,
+    lor, land,
     neq,
     raw,
     select,
+    set_example
 )
