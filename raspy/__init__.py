@@ -2,16 +2,10 @@ from .prelude import *  # noqa: F401,F403
 from .rasp import (  # noqa: F401,F403
     SOp,
     aggregate,
-    eq,
-    ge,
-    gt,
     identity,
     indices,
-    le,
-    lt,
-    lor, land,
-    neq,
     raw,
     select,
-    set_example
+    set_example,
+    key, query, where
 )

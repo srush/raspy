@@ -22,16 +22,13 @@ def select_eq(k: SOpLike, q: SOpLike) -> Selector:
     return select(k, q, eq)
 
 
-def where(pred: SOpLike, t: SOpLike, f: SOpLike) -> SOp:
-    return wrap(f) * ~wrap(pred) + wrap(t) * wrap(pred)
-
-
 def selector_width(sel: Selector, assume_bos: bool = False) -> SOp:
     light0 = indices == 0
     or0 = sel | select_eq(indices, 0)
-    and0 = sel & select_eq(indices, 0)
     or0_0_frac = aggregate(or0, light0)
     or0_width = 1 / or0_0_frac
+
+    and0 = sel & select_eq(indices, 0)
     and0_width = aggregate(and0, light0)
 
     bos_res = or0_width - 1
