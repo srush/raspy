@@ -4,8 +4,10 @@ from .rasp import (  # noqa: F401,F403
     aggregate,
     identity,
     indices,
+    key,
+    query,
     raw,
     select,
     set_example,
-    key, query, where
+    where,
 )

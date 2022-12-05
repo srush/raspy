@@ -1,10 +1,10 @@
 # raspy
 
-This repo is a reimplementation for [RASP](https://github.com/tech-srl/RASP) as really neat language for thinking about transformer calculations. 
+This repo is a reimplementation for [RASP](https://github.com/tech-srl/RASP) as really neat language for thinking about transformer calculations.
 
 This version is done completely in Python as an [embedded domain specific language](http://wiki.c2.com/?EmbeddedDomainSpecificLanguage).
 
-It mostly runs the RASP code as originally specified: 
+It mostly runs the RASP code as originally specified:
 
 ## Code for recognizing shuffled Dyck-2 Languages
 

@@ -1,29 +1,46 @@
 from __future__ import annotations
-from functools import reduce
+
 import math
+import operator
 from dataclasses import dataclass
+from functools import reduce
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-Pos = int
 Raw = float
 SOpLike = Union["SOp", List[Raw], str, int, float]
-eq = lambda a, b: a == b  # noqa: E731
-neq = lambda a, b: a != b  # noqa: E731
-lt = lambda a, b: a < b  # noqa: E731
-le = lambda a, b: a <= b  # noqa: E731
-gt = lambda a, b: a > b  # noqa: E731
-ge = lambda a, b: a >= b  # noqa: E731
-lor = lambda a, b: a or b  # noqa: E731
-land = lambda a, b: a and b  # noqa: E731
 Att = List[List[bool]]
+
+
+def numeric_ops(cls) -> None:
+    for op in [
+        "le",
+        "lt",
+        "gt",
+        "ge",
+        "eq",
+        "ne",
+        "truediv",
+        "add",
+        "sub",
+        "and",
+        "or",
+        "mul",
+        "invert",
+    ]:
+        n = f"__{op}__"
+        x = lambda self, *other, n=n: self._op(getattr(operator, n), *other)
+        x.__name__ = f"__{op}__"
+        setattr(cls, f"__{op}__", x)
 
 
 # History
 EXAMPLE = "hello"
 
+
 def set_example(example: Any) -> None:
     global EXAMPLE
     EXAMPLE = example
+
 
 @dataclass
 class Hist:
@@ -37,8 +54,7 @@ empty = Hist(0, [], None)
 
 def merge(*hists: Hist) -> Hist:
     return Hist(
-        layer=reduce(max, [h.layer for h in hists]),
-        prev=hists, attentions=None
+        layer=reduce(max, [h.layer for h in hists]), prev=hists, attentions=None
     )
 
 
@@ -48,29 +64,38 @@ class Seq:
     val: List[Raw]
     hist: Hist = empty
 
+    def toseq(self) -> List[Raw]:
+        return self.val
+
+    def __repr__(self) -> str:
+        return repr(self.val)
+
 
 @dataclass
 class Sel:
     val: Att
     hist: Hist = empty
 
+    def __repr__(self):
+        run = self.val
+        mat = self.val
+        out = "    " + " ".join([str(x) for x in run]) + "\n"
+        out += "    " + "-".join(["-" for x in run]) + "\n"
+        for e, row in zip(run, mat):
+            out += str(e) + " | " + " ".join(["1" if v else " " for v in row]) + "\n"
+        return f"out({repr(run)})= \n" + out
+
 
 class SOp:
-    def __init__(self, f: Callable[[Seq], Seq], bound: Any =[]):
+    def __init__(self, f: Callable[[Seq], Seq]):
         self.f = f
-        self.bound = bound
-
-    def map(self, f: Callable[[Raw], Raw]) -> SOp:
-        def fn(s: Seq) -> Seq:
-            seq = self.f(s)
-            return Seq([f(v) for v in seq.val], seq.hist)
-
-        return SOp(fn)
-
+        self.cache = {}
+        
     @staticmethod
-    def zip(f: Callable[[Raw, Raw], Raw], *ss: SOp) -> SOp:
+    def zip(f, *ss: SOp) -> SOp:
         def fn(s: Seq) -> Seq:
-            seq1 = [s1.f(s) for s1 in ss]
+            seq1 = [s1(s) for s1 in ss]
+
             return Seq(
                 [f(*vs) for vs in zip(*[s1.val for s1 in seq1])],
                 merge(*[s1.hist for s1 in seq1]),
@@ -78,65 +103,20 @@ class SOp:
 
         return SOp(fn)
 
-    def __call__(self, inplike: SOpLike) -> SOp:
-        if isinstance(inplike, SOp):
-            inp = wrap(inplike)
+    def map(self, f: Callable[[Raw], Raw]) -> SOp:
+        return SOp.zip(f, self)
 
-            def fn(s: Seq) -> Seq:
-                seq1 = inp.f(s)
-                return self.f(seq1)
+    def __call__(self, inplike) -> Seq:
+        inp = inplike
+        if not isinstance(inplike, Seq):
+            inp = Seq(inp)
+        key = tuple(inp.val)
+        if key not in self.cache:
+            self.cache[key] = self.f(inp)
+        return self.cache[key]
 
-            return SOp(fn)
-        else:
-            return SOp(self.f, inplike)
-
-    def __eq__(self, x: SOpLike) -> SOp:  # type: ignore
-        return SOp.zip(eq, self, wrap(x))
-
-    def __ne__(self, x: SOpLike) -> SOp:  # type: ignore
-        return SOp.zip(neq, self, wrap(x))
-
-    def __le__(self, x: SOpLike) -> SOp:
-        return SOp.zip(le, self, wrap(x))
-
-    def __lt__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lt, self, wrap(x))
-
-    def __ge__(self, x: SOpLike) -> SOp:
-        return SOp.zip(ge, self, wrap(x))
-
-    def __gt__(self, x: SOpLike) -> SOp:
-        return SOp.zip(gt, self, wrap(x))
-
-    def __add__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda a, b: a + b, self, wrap(x))
-
-    def __sub__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda a, b: a - b, self, wrap(x))
-
-    def __neg__(self) -> SOp:
-        return self.map(lambda a: -a)
-
-    def __mul__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda a, b: a * b, self, wrap(x))
-
-    def __rmul__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda b, a: a * b, self, wrap(x))
-
-    def __truediv__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda a, b: a / b, self, wrap(x))
-
-    def __rtruediv__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda b, a: a / b, self, wrap(x))
-
-    def __invert__(self) -> SOp:
-        return self.map(lambda a: not a)
-
-    def __and__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda a, b: a and b, self, wrap(x))
-
-    def __or__(self, x: SOpLike) -> SOp:
-        return SOp.zip(lambda a, b: a or b, self, wrap(x))
+    def _op(self, f, *other) -> SOp:
+        return SOp.zip(f, self, *map(wrap, other))
 
     def has(self, v: Any) -> SOp:
         return self.map(lambda x: x in v)
@@ -147,8 +127,11 @@ class SOp:
     def sin(self) -> SOp:
         return self.map(math.sin)
 
-    def toseq(self) -> List[Raw]:
-        return self.f(Seq(self.bound)).val
+    def __repr__(self) -> str:
+        return repr(self(EXAMPLE))
+
+    def __rtruediv__(self, x: SOpLike) -> SOp:
+        return SOp.zip(lambda b, a: a / b, self, wrap(x))
 
     def totree(self) -> None:
         def collect(history: Hist) -> None:
@@ -166,19 +149,22 @@ class SOp:
                     out = "    " + " ".join([str(x) for x in EXAMPLE]) + "\n"
                     out += "    " + "-".join(["-" for x in EXAMPLE]) + "\n"
                     for e, row in zip(EXAMPLE, cur.attentions[0]):
-                        out += str(e) + " | " + " ".join(["1" if v else " "  for v in row]) + "\n"
+                        out += (
+                            str(e)
+                            + " | "
+                            + " ".join(["1" if v else " " for v in row])
+                            + "\n"
+                        )
                     print(out)
                     seen[cur.attentions[1], cur.layer] = True
                 queue += cur.prev
 
-        history = self(EXAMPLE).f(Seq([])).hist
+        history = self(EXAMPLE).hist
         print("Number of layers", history.layer)
         collect(history)
 
-    def __repr__(self) -> str:
-        global EXAMPLE
-        run = self.bound if self.bound else EXAMPLE
-        return f"out({repr(run)})=" + repr(self(run).toseq())
+
+numeric_ops(SOp)
 
 
 def raw(x: List[Raw]) -> SOp:
@@ -206,70 +192,37 @@ identity = SOp(lambda x: x)
 
 
 class Selector:
-    def __init__(self, s: Callable[[Seq], Sel], bound = []):
+    def __init__(self, s: Callable[[Seq], Sel]):
         self.s = s
-        self.bound = bound
+        self.cache = {}
         
-    def tomat(self) -> List[List[bool]]:
-        s = self.s(Seq(self.bound))
-        return [[s.val[i][j] for i in range(len(s.val))] for j in range(len(s.val))]
-
     @staticmethod
-    def zip(fn: Callable[[bool, bool], bool], a: Selector, b: Selector) -> Selector:
+    def zip(fn: Callable[[bool], bool], *aa: Selector) -> Selector:
         def ret(x: Seq) -> Sel:
-            av: Sel = a.s(x)
-            bv: Sel = b.s(x)
+            av = [a.s(x) for a in aa]
             return Sel(
-                [
-                    [fn(ax, bx) for ax, bx in zip(al, bl)]
-                    for al, bl in zip(av.val, bv.val)
-                ],
-                merge(av.hist, bv.hist),
+                [[fn(*ax2) for ax2 in zip(*ax)]
+                 for ax in zip(*[al.val for al in av])],
+                merge(*[a.hist for a in av]),
             )
 
         return Selector(ret)
 
     def map(self, fn: Callable[[bool], bool]) -> Selector:
-        def ret(x: Seq) -> Sel:
-            sv = self.s(x)
-            return Sel([[fn(ax) for ax in al] for al in sv.val], sv.hist)
+        return Selector.zip(fn)
 
-        return Selector(ret)
-
-    def __call__(self, inplike: SOpLike) -> Selector:
-        if isinstance(inplike, SOp):
-            inp = wrap(inplike)
-
-            def ret(x: Seq) -> Sel:
-                seq = inp.f(x)
-                return self.s(seq)
-
-            return Selector(ret)
-        else:
-            return Selector(self.s, inplike)
+    def __call__(self, inplike: SOpLike) -> Sel:
+        return self.f(Seq(inplike))
 
     def __repr__(self) -> str:
-        global EXAMPLE
-        run = self.bound if self.bound else EXAMPLE
-        mat = self(run).tomat()
-        out = "    " + " ".join([str(x) for x in run]) + "\n"
-        out += "    " + "-".join(["-" for x in run]) + "\n"
-        for e, row in zip(run, mat):
-            out += str(e) + " | " + " ".join(["1" if v else " "  for v in row]) + "\n"
-        return f"out({repr(run)})= \n" + out
+        return repr(self(EXAMPLE))
 
-    def __invert__(self) -> Selector:
-        return self.map(lambda a: not a)
+    def _op(self, op, *other: Selector) -> Selector:
+        return Selector.zip(op, self, *other)
 
-    def __and__(self, x: Selector) -> Selector:
-        return Selector.zip(lambda a, b: a and b, self, x)
-
-    def __or__(self, x: Selector) -> Selector:
-        return Selector.zip(lambda a, b: a or b, self, x)
-
-    def value(self, val: SOpLike, default=0) -> SOp:
+    def value(self, val: SOpLike, default: Raw = 0) -> SOp:
         return aggregate(self, val, default=default)
-    
+
 
 def select(
     keylike: SOpLike, querylike: SOpLike, predicate: Callable[[Raw, Raw], bool]
@@ -278,7 +231,7 @@ def select(
     key = wrap(keylike)
 
     def ret(x: Seq) -> Sel:
-        q, k = query.f(x), key.f(x)
+        q, k = query(x), key(x)
         return Sel(
             [
                 [predicate(k.val[j], q.val[i]) for i in range(len(q.val))]
@@ -290,7 +243,7 @@ def select(
     return Selector(ret)
 
 
-def mean(x: List[float], default=0) -> float:
+def mean(x: List[float], default: raw = 0) -> float:
     if len(x) == 0:
         return default
     if len(x) == 1:
@@ -298,15 +251,18 @@ def mean(x: List[float], default=0) -> float:
     return sum(x) / len(x)
 
 
-def aggregate(sel: Selector, vallike: SOpLike, default =0, name: str = "") -> SOp:
+def aggregate(sel: Selector, vallike: SOpLike, default=0, name: str = "") -> SOp:
     val = wrap(vallike)
 
     def fn(x: Seq) -> Seq:
-        v = val.f(x)
+        v = val(x)
         s = sel.s(x)
         return Seq(
             [
-                mean([v.val[j] for j in range(len(v.val)) if s.val[j][i]], default=default)
+                mean(
+                    [v.val[j] for j in range(len(v.val)) if s.val[j][i]],
+                    default=default,
+                )
                 for i in range(len(s.val))
             ],
             Hist(
@@ -323,47 +279,32 @@ class Key:
     def __init__(self, sop: SOp):
         self.sop = sop
 
-    def __eq__(self, other: Query) -> Sel:
-        return select(self.sop, other.sop, eq)
+    def _op(self, f: Callable[[Raw, Raw], Raw], other: Query) -> Selector:
+        return select(self.sop, other.sop, f)
 
-    def __le__(self, other: Query) -> Sel:
-        return select(self.sop, other.sop, le)
 
-    def __lt__(self, other: Query) -> Sel:
-        return select(self.sop, other.sop, lt)
+numeric_ops(Key)
+numeric_ops(Selector)
 
-    def __ge__(self, other: Query) -> Sel:
-        return select(self.sop, other.sop, ge)
 
-    def __gt__(self, other: Query) -> Sel:
-        return select(self.sop, other.sop, gt)
-
-    def __or__(self, other: Query):
-        return select(self.sop, other.sop, lor)
-
-    def __and__(self, other: Query) -> Sel:
-        return select(self.sop, other.sop, land)
-
-    def __repr__(self):
-        return repr(self.sop)
-        
-def key(x: SOpLike):
+def key(x: SOpLike) -> Key:
     return Key(wrap(x))
 
 
 class Query:
     def __init__(self, sop: SOpLike):
         self.sop = wrap(sop)
-    
-    def __repr__(self):
-        global EXAMPLE
-        run = self.sop.bound if self.sop.bound else EXAMPLE
-        return f"query(out)({repr(run)})=\n" + " | \n".join(self.sop(run).toseq()) + " |"
 
-    
-    
-def query(x: SOpLike):
+    def __repr__(self) -> str:
+        run = EXAMPLE
+        return (
+            f"query(out)({repr(run)})=\n" + " | \n".join(self.sop(run).toseq()) + " |"
+        )
+
+
+def query(x: SOpLike) -> Query:
     return Query(x)
 
 def where(pred: SOpLike, t: SOpLike, f: SOpLike) -> SOp:
     return SOp.zip(lambda p, t, f: t if p else f, wrap(pred), wrap(t), wrap(f))
+

@@ -3,23 +3,25 @@ from .rasp import (
     SOp,
     SOpLike,
     aggregate,
-    eq,
     identity,
     indices,
-    lt,
+    key,
+    query,
     select,
     wrap,
 )
 
 tokens = identity
-select_all = select(1, 1, eq)
+select_all = key(1) == query(1)
 length = 1 / aggregate(select_all, indices == 0)
-reverse = aggregate(select(indices, length - indices - 1, eq), tokens)
-same_token = select(tokens, tokens, eq)
 
 
 def select_eq(k: SOpLike, q: SOpLike) -> Selector:
-    return select(k, q, eq)
+    return key(k) == query(q)
+
+
+reverse = aggregate(select_eq(indices, length - indices - 1), tokens)
+same_token = key(tokens) == query(tokens)
 
 
 def selector_width(sel: Selector, assume_bos: bool = False) -> SOp:
@@ -37,7 +39,7 @@ def selector_width(sel: Selector, assume_bos: bool = False) -> SOp:
 
 
 def has_prev(seq: SOpLike) -> SOp:
-    prev_copy = select(seq, seq, eq) and select(indices, indices, lt)
+    prev_copy = select_eq(seq, seq) and (key(indices) < query(indices))
     return aggregate(prev_copy, 1) > 0
 
 
@@ -46,13 +48,13 @@ def histf(seq: SOpLike, assume_bos: bool = False) -> SOp:
 
 
 def sort(vals: SOp, keys: SOp, assume_bos: bool = False) -> SOp:
-    smaller = select(keys, keys, lt) | (
-        select(keys, keys, eq) & select(indices, indices, lt)
+    smaller = (key(keys) < query(keys)) | (
+        (key(keys) == query(keys)) & (key(indices) < query(indices))
     )
     num_smaller = selector_width(smaller, assume_bos=assume_bos)
     if not assume_bos:
         target_pos = num_smaller
     else:
         target_pos = where(indices == 0, 0, (num_smaller + 1))
-    sel_new = select(target_pos, indices, eq)
+    sel_new = select_eq(target_pos, indices)
     return aggregate(sel_new, vals)
