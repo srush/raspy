@@ -10,15 +10,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 Raw = float
 SOpLike = Union["SOp", List[Raw], str, int, float]
 
-
-# History
-EXAMPLE = "hello"
-
-
-def set_example(example: Any) -> None:
-    global EXAMPLE
-    EXAMPLE = example
-
 @dataclass
 class Hist:
     layer: int
@@ -406,3 +397,5 @@ def query(x: SOpLike) -> Query:
 
 def where(pred: SOpLike, t: SOpLike, f: SOpLike) -> SOp:
     return SOp.zip(lambda p, t, f: t if p else f, wrap(pred), wrap(t), wrap(f))
+
+tokens = identity
