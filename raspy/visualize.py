@@ -1,7 +1,9 @@
-from raspy.rasp import mean2
+from raspy.rasp import mean2, Seq, Key, Query
 from chalk import *
 from raspy import *
 from colour import Color
+import tempfile
+import os
 orange = Color("#f4c095")
 green = Color("#679289")
 red = Color("#ee2e31")
@@ -78,3 +80,43 @@ def draw_all(seq):
     # if len(d) > 0:
     #     dia = dia | hstrut(1) | r
     return dia
+
+EXAMPLE = "hello"
+def draw_svg(self) -> str:
+    f = tempfile.NamedTemporaryFile(delete=False)
+    self.render_svg(f.name, height=25 * self.get_envelope().height, draw_height=300)
+    f.close()
+    svg = open(f.name).read()
+    os.unlink(f.name)
+    return svg
+
+def rdraw(self):
+    return draw_svg(draw_all(self))
+Seq._repr_svg_ = rdraw
+def r3draw(self):
+    return draw_svg(draw_sel(self(EXAMPLE)))
+
+Selector._repr_svg_ = r3draw
+def r2draw(self):
+    return rdraw(self(EXAMPLE))
+SOp._repr_svg_ = r2draw
+SOp.input = lambda self, x: self(x)
+
+
+def kdraw(self):
+    return draw_svg(word("key", blue).with_envelope(rectangle(4, 1)) | hstrut(1) | vcat([word(w, green) for w in self.sop(EXAMPLE).val]))
+Key._repr_svg_ = kdraw
+def qdraw(self):
+    return draw_svg(word("query", blue).with_envelope(rectangle(4, 1)) | hstrut(1) | hcat([word(w, orange) for w in self.sop(EXAMPLE).val]))
+Query._repr_svg_ = qdraw
+set_svg_draw_height(400)
+
+def box(text, c=Color("white")):
+    return rectangle(2.5, 1, 0.1).fill_color(c)  + word(text).scale(0.4)
+def box2(text, c=Color("white")):
+    return rectangle(2.5, 1).fill_color(c)  + word(text).scale(0.4)
+set_svg_height(400)
+
+
+
+
