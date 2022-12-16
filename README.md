@@ -3,6 +3,9 @@
 
 ## [Blog](https://srush.github.io/raspy/)
 
+or
+
+## [Interactive / Colab](https://colab.research.google.com/github/srush/raspy/blob/main/Blog.ipynb)
 
 This repo is a reimplementation for [RASP](https://github.com/tech-srl/RASP) as really neat language for thinking about transformer calculations.
 
