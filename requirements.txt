@@ -1,1 +1,2 @@
+git+https://github.com/chalk-diagrams/chalk/
 pytest

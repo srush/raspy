@@ -7,7 +7,7 @@ from .rasp import (  # noqa: F401,F403
     query,
     raw,
     select,
-    set_example,
+    tokens,
     where,
 )
 from .visualize import *
