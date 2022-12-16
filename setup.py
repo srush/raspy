@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-   name='RASPy',
+   name='raspy',
    version='0.1',
-   packages=['raspy'],  #same as name
+   packages=['raspy'], 
 )
