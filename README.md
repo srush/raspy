@@ -1,6 +1,6 @@
 # RASPy
 
-<img src="https://user-images.githubusercontent.com/35882/208687068-66d07246-c9ac-45ea-8638-5357ccba178e.png)" width=200>
+<img src="https://user-images.githubusercontent.com/35882/208687068-66d07246-c9ac-45ea-8638-5357ccba178e.png" width=200>
 
 ## [Blog](https://srush.github.io/raspy/)
 
