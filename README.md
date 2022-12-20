@@ -1,6 +1,6 @@
 # RASPy
 
-![image](https://user-images.githubusercontent.com/35882/208686783-23a92b5f-ba6a-4aec-aefe-6a4ad9631a95.png)
+![image](https://user-images.githubusercontent.com/35882/208687068-66d07246-c9ac-45ea-8638-5357ccba178e.png)
 
 ## [Blog](https://srush.github.io/raspy/)
 
