@@ -26,13 +26,13 @@ def draw_sel(self):
     top = empty()  # hcat([word(x, Color("lightgrey")) for x in  self.bind])
     left = empty()
     for k, q in self.kqs:
-        top = top / hcat([word(x, orange) for x in q.val])
-        left = left | vcat([word(x, green) for x in k.val], 0)
+        top = top / hcat([word(x, orange) for x in k.val])
+        left = left | vcat([word(x, green) for x in q.val], 0)
 
     mat = self.val
-    heat = vcat(
+    heat = hcat(
         [
-            hcat(
+            vcat(
                 [
                     rectangle(1, 1)
                     .line_color(black)
@@ -63,11 +63,11 @@ def draw(bself):
     #     bottom = bottom / hcat([word(x[1]) for x in result])
 
     # else:
-    bottom = hcat([word(x, black) for x in bself.result])
+    right = vcat([word(x, black) for x in bself.result])
     if not bself.width:
-        right = vcat([word(x, red) for x in bself.v.val])
+        bottom = hcat([word(x, red) for x in bself.v.val])
     else:
-        right = vcat([])
+        bottom = hcat([])
 
     d = d.beside(right.center_xy(), unit_x)
     d = d.beside(bottom.center_xy(), unit_y)
@@ -88,13 +88,13 @@ def draw_all(seq):
         d.setdefault(sel.layer, [])
         d[sel.layer].append(sel)
 
-    r = rectangle(1, 1).frame(0.5).line_color(Color("lightgrey"))
-    r = (
-        r.beside(word("Q"), -unit_y)
-        .beside(word("K"), -unit_x)
-        .beside(word("V"), unit_x)
-        .beside(word("="), unit_y)
-    )
+    # r = rectangle(1, 1).frame(0.5).line_color(Color("lightgrey"))
+    # r = (
+    #     r.beside(word("Q"), -unit_y)
+    #     .beside(word("K"), -unit_x)
+    #     .beside(word("V"), unit_x)
+    #     .beside(word("="), unit_y)
+    # )
     dia = vcat(
         [word("Input", blue).with_envelope(rectangle(3, 1)) | initial]
         + [
@@ -145,23 +145,23 @@ SOp._repr_svg_ = r2draw
 SOp.input = lambda self, x: self(x)
 
 
-def kdraw(self):
-    return draw_svg(
-        word("key", blue).with_envelope(rectangle(4, 1))
-        | hstrut(1)
-        | vcat([word(w, green) for w in self.sop(EXAMPLE).val])
-    )
-
-
-Key._repr_svg_ = kdraw
-
-
 def qdraw(self):
     return draw_svg(
         word("query", blue).with_envelope(rectangle(4, 1))
         | hstrut(1)
+        | vcat([word(w, green) for w in self.sop(EXAMPLE).val])
+    )
+
+def kdraw(self):
+    return draw_svg(
+        word("key", blue).with_envelope(rectangle(4, 1))
+        | hstrut(1)
         | hcat([word(w, orange) for w in self.sop(EXAMPLE).val])
     )
+
+Key._repr_svg_ = kdraw
+
+
 
 
 Query._repr_svg_ = qdraw
