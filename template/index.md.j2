@@ -1,0 +1,50 @@
+{%- extends 'markdown/index.md.j2' -%}
+
+{% block header %}
+  {{ super() }}
+  <link rel="stylesheet" href="custom.css">
+{% endblock %}
+
+{% block input %}
+
+{%- if "hide_inp" in cell.metadata.get('tags', []) -%}
+{%- else -%}
+```
+{{ cell.source}}
+```
+{%- endif -%}
+
+{% endblock input %}
+
+
+
+{%- block any_cell scoped -%}
+{%- if cell.metadata.get('slide_start', False) -%}
+<section>
+{%- endif -%}
+{%- if cell.metadata.get('subslide_start', False) -%}
+<section>
+{%- endif -%}
+{%- if cell.metadata.get('fragment_start', False) -%}
+<hr>
+{%- endif -%}
+{%- if cell.metadata.slide_type == 'notes' -%}
+<aside class="notes">
+{{ super() }}
+</aside>
+{%- elif cell.metadata.slide_type == 'skip' -%}
+{%- else -%}
+{{ super() }}
+{%- endif -%}
+{%- if cell.metadata.get('fragment_end', False) -%}
+
+{%- endif -%}
+{%- if cell.metadata.get('subslide_end', False) -%}
+</section>
+{%- endif -%}
+{%- if cell.metadata.get('slide_end', False) -%}
+</section>
+{%- endif -%}
+{%- endblock any_cell -%}
+
+
