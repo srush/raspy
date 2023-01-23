@@ -1721,8 +1721,8 @@ shift(2)</code></pre>
 <h3 id="challenge-5-right-align">Challenge 5: Right Align</h3>
 <p>Right align a padded sequence, e.g. ralign().inputs(‘xyz___’) =‘—xyz’&quot; (2 layers)</p>
 <pre><code>def ralign(default=&quot;-&quot;, sop=tokens):
-    c = (key(sop) == query(&quot;_&quot;)).value(1)
-    x = (key(indices + c) == query(indices)).value(sop, default)
+    c = (key(sop) == query(&quot;_&quot;)).value(1) # count how much padding there is
+    x = shift(c,default,sop)
     return x.name(&quot;ralign&quot;)
 ralign()(&quot;xyz__&quot;)</code></pre>
 <figure>
