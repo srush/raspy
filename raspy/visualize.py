@@ -43,8 +43,8 @@ def draw_sel(self):
             for row in mat
         ]
     ).frame(0.1)
-    d = heat.translate(2, 0).center_xy().beside(top.center_xy(), -unit_y)
-    d = d.beside(left.center_xy(), -unit_x)
+    d = heat.translate(2, 0).center_xy()#.beside(top.center_xy(), -unit_y)
+    #d = d.beside(left.center_xy(), -unit_x)
     return d
 
 
@@ -69,8 +69,8 @@ def draw(bself):
     else:
         bottom = hcat([])
 
-    d = d.beside(right.center_xy(), unit_x)
-    d = d.beside(bottom.center_xy(), unit_y)
+    d = d.beside(right.center_xy(), -unit_x)
+    d = d.beside(bottom.center_xy(), -unit_y)
 
     if bself._name:
         d = d.beside(
