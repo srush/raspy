@@ -306,6 +306,7 @@ def select(
 
 
 def mean(x: List[int], default: Raw = 0) -> int:
+    x = [b for b in x if b != 0]
     if len(x) == 0:
         return default
     if len(x) == 1:
