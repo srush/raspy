@@ -6,7 +6,7 @@
 # Thinking Like Transformers
 
 - [Paper](https://arxiv.org/pdf/2106.06981.pdf) by Gail Weiss, Yoav Goldberg, Eran Yahav
-- Blog by [Sasha Rush](https://rush-nlp.com/) and [Gail Weiss](https://sgailw.cswp.cs.technion.ac.il/)
+- Blog by [Sasha Rush](https://rush-nlp.com/) and [Gail Weiss](https://gailweiss.github.io/)
 - Library and Interactive Notebook: [srush/raspy](https://github.com/srush/RASPy)
 
 Transformer models are foundational to AI systems. There are now countless explanations of "how transformers work?" in the sense of the architecture diagram at the heart of transformers.
@@ -23,7 +23,8 @@ Transformer models are foundational to AI systems. There are now countless expla
 
 However this diagram does not provide any intuition into the computational model of this framework. As researchers become interested in how Transformers work, gaining intuition into their mechanisms becomes increasingly useful.
 
-[Thinking like Transformers](https://arxiv.org/pdf/2106.06981.pdf) proposes a computational framework for  Transformer-like calculations. The framework uses discrete computation to simulate Transformer computations.  The resulting language [RASP](https://github.com/tech-srl/RASP) is a programming language where every program compiles down to a specific Transformer.
+<a href="https://arxiv.org/pdf/2106.06981.pdf">Thinking like Transformers</a> proposes a computational framework for Transformer-like calculations. The framework uses discrete computation to simulate Transformer computations. The resulting language <a href="https://github.com/tech-srl/RASP">RASP</a> is a programming language where, ideally, every program can compile down to a specific Transformer (indeed, David Lindner and colleagues have recently released a <a href="https://arxiv.org/abs/2301.05062">compiler</a> for a large subset of RASP!).</p>
+
 
 In this blog post, I reimplemented a variant of RASP in Python ([RASPy](https://github.com/srush/raspy)). The language is roughly compatible with the original version, but with some syntactic changes that I thought were fun. With this language, the author of the work Gail Weiss, provided a challenging set of puzzles to walk through and understand how it works. 
 
@@ -229,7 +230,7 @@ atoi.input("31234")
 
 
 
-When chaining these transforms, it is often easier to write as functions. For example the following applies where and then `atoi` and then adds 2. 
+When chaining these transforms, it is often easier to work with functions. For example the following applies where and then <code>atoi</code> and then adds 2.
 
 ```
 def atoi(seq=tokens):
@@ -247,6 +248,9 @@ op.input("02-13")
 
 
 
+From here on, unless we use a different input sequence, we will assume that the input is ‘hello’ and omit the input display in the illustrations.
+
+
 ###  Attention Selectors
 
 Things get more interesting when we start to apply attention. This allows routing of information between the different elements of the sequence. 
@@ -261,7 +265,7 @@ Things get more interesting when we start to apply attention. This allows routin
 
 
 
-We begin by defining notation for the keys and queries of the model. Keys and Queries can be created directly from the transforms defined above. For example if we want to define a key we call `key`.
+We begin by defining notation for the keys and queries of the model. Keys and queries are effectively transforms that we will broadcast and compare to each other to create *selectors*, our parallel to attention patterns. We create them directly from transforms. For example, if we want to define a key, we call `key` on a transform.
 
 ```
 key(tokens)
@@ -275,7 +279,7 @@ key(tokens)
 
 
 
-Similarly for `query`.
+Similarly for `query`. (Queries are presented as columns to reflect their relation to the selectors we will create from them.)
 
 ```
 query(tokens)
@@ -303,7 +307,9 @@ query(1)
 
 
 
-By applying an operation between a keys and queries we create a *selector*. This corresponds to a binary matrix indicating which keys each query is attending to. Unlike in Transformers, this attention matrix is unweighted.
+By applying a comparison operation between a key and a query we create a *selector*, our parallel to an attention matrix - though this one is unweighted. 
+
+A selector is a binary matrix indicating which input position (column) each output position (row) will attend to in an eventual attention computation. In the comparison creating it, the key values describe the input (column) positions, and the query values describe the output (row) positions.
 
 ```
 eq = (key(tokens) == query(tokens))
@@ -320,7 +326,7 @@ eq
 
 Some examples: 
 
-* A selector the matches positions offset by 1.
+* A selector that matches each output position to the previous input position.
 
 ```
 offset = (key(indices) == query(indices - 1))
@@ -335,7 +341,7 @@ offset
 
 
 
-* A selector that matches to keys earlier in time. 
+* A selector that matches each output position to all earlier input positions.
 
 ```
 before = key(indices) < query(indices)
@@ -350,7 +356,7 @@ before
 
 
 
-* A selector that matches to keys later in time.
+* A selector that matches each output position to all later input positions.
 
 ```
 after = key(indices) > query(indices)
@@ -365,7 +371,7 @@ after
 
 
 
-Selectors can be merged with boolean operations. For example, this selector attends only to tokens before it in time with the same value. We show this by including both pairs of keys and values in the matrix.
+Selectors can be merged using boolean operations. For example, this selector focuses each output position on 1) earlier positions that 2) contain the same original input token as its own. We show this by including both pairs of keys and queries in the matrix.
 
 ```
 before & eq
@@ -411,7 +417,7 @@ Visually we follow the architecture diagram. Queries are to the left, Keys at th
 
 
 
-Some attention operations may not even use the input tokens. For instance to compute the `length` of a sequence, we create a "select all" attention selector and then add the values.
+Some attention operations may not even use the input tokens. For instance to compute the `length` of a sequence, we create a “select all” attention selector and then add 1 from each position.
 
 ```
 length = (key(1) == query(1)).value(1)
@@ -429,7 +435,7 @@ length
 
 Here's a more complex example, shown step-by-step. (This is the kind of thing they ask in interviews!)
 
-Say we want to compute the sum of neighboring values in a sequence. First we apply the forward cutoff. 
+Say we want to compute the sum of neighboring values in a sequence, along a sliding window. First we apply the forward cutoff, attending only to positions that are not too far in the past.
 
 ```
 WINDOW=3
@@ -445,7 +451,7 @@ s1
 
 
 
-Then the backward cutoff. 
+Then the backward cutoff, attending only to positions up to and including our own.
 
 ```
 s2 = (key(indices) <= query(indices))
@@ -490,7 +496,7 @@ sum2.input([1,3,2,2,2])
 
 
 
-Here's a similar example with a cumulative sum. We introduce here the ability to `name` a transform which helps with debugging.
+Here is a simple example that produces a 2-layer transform. The first corresponds to computing length and the second the cumulative sum. The cumulative sum has to go into a second layer because it is applied to a transform which uses length, and so it can only be computed after the computation of length is complete.
 
 ```
 def cumsum(seq=tokens):
@@ -540,13 +546,14 @@ x.input([3, 2, 3, 5])
 
 Given this library of functions, we can write operations to accomplish surprisingly complex tasks. 
 
-Gail Weiss, gave me a really challenging problem broken up into steps. 
-
-**Can we produce a Transformer that does basic addition of arbitrary length numbers?**
+**Can we produce a Transformer that does basic addition of two arbitrary length numbers?**
 
 i.e. given a string "19492+23919" can we produce the correct output? 
 
-If you would rather do these on your own, we provide [a version](https://colab.research.google.com/github/srush/raspy/blob/main/Blog.ipynb) where you can try these yourself.
+We will go through these steps, and their solutions, here. If you would rather do them on your own, we provide [a version](https://colab.research.google.com/github/srush/raspy/blob/main/Blog2.ipynb") where you can try them yourself!
+
+Before we dive in to the main task, we will do some challenges of increasing difficulty to help us build some intuitions.
+
 
 ### Challenge 1: Select a given index
 
@@ -569,7 +576,7 @@ index(1)
 
 ### Challenge 2: Shift
 
-Shift all of the tokens in a sequence to the right by `i` positions.
+Shift all of the tokens in a sequence to the right by i positions. (Here we introduce an optional parameter in the aggregation: the default value to be used when no input positions are selected. If not defined, this value is 0.)
 
 ```
 def shift(i=1, default="_", seq=tokens):
@@ -608,9 +615,11 @@ minimum()([5,3,2,5,2])
 
 
 
+The idea behind our solution is an implicit full ordering of the input positions: we (implicitly) order the positions according to input token value, with input position as tie breaker. Our first act is to have each position attend to all positions before it in the ordering: `sel1` focuses on earlier input positions with the same input token value, and `sel2` focuses on input positions with lower input token value. We then aggregate a 1 from all positions to get where each position is located in this ordering (i.e., how many other positions precede it). The minimum value is the input value at the first position according to this ordering (i.e., the one which had no other positions precede it).
+
 ### Challenge 4: First Index
 
-Compute the first index that has token `q`. (2 layers)
+Compute the first index that has token q, assuming the sequence always has length shorter than 100. (2 layers)
 
 ```
 def first(q, seq=tokens):
@@ -621,7 +630,7 @@ first("l")
 
 
     
-![svg](Blog_files/Blog_89_0.svg)
+![svg](Blog_files/Blog_90_0.svg)
     
 
 
@@ -641,32 +650,33 @@ ralign()("xyz__")
 
 
     
-![svg](Blog_files/Blog_91_0.svg)
+![svg](Blog_files/Blog_92_0.svg)
     
 
 
 
 ### Challenge 6: Split
 
-Split a sequence into two parts at token "v" and then right align. (2 layers)
+Split a sequence into two parts at value v and then right align. You can assume there is exactly one appearance of v in the sequence. (3 layers to get and align the first part of the sequence, but only 1 for the second.)
 
 ```
-def split(v, i, sop=tokens):
-
-    mid = (key(sop) == query(v)).value(indices)
-    if i == 0:
-        x = ralign("0", where(indices < mid, sop, "_"))
+def split(v, get_first_part, sop=tokens, default="0"):
+    split_point = (key(sop) == query(v)).value(indices)
+    if get_first_part:
+        x = ralign(default, 
+                   where(indices < split_point, 
+                         sop, "_"))
         return x
     else:
-        x = where(indices > mid, sop, "0")
+        x = where(indices > split_point, sop, default)
         return x
-split("+", 1)("xyz+zyr")
+split("+", False)("xyz+zyr")
 ```
 
 
 
     
-![svg](Blog_files/Blog_93_0.svg)
+![svg](Blog_files/Blog_94_0.svg)
     
 
 
@@ -678,7 +688,7 @@ split("+", 0)("xyz+zyr")
 
 
     
-![svg](Blog_files/Blog_94_0.svg)
+![svg](Blog_files/Blog_95_0.svg)
     
 
 
@@ -699,7 +709,7 @@ slide(tokens != "<").input("xxxh<<<l")
 
 
     
-![svg](Blog_files/Blog_96_0.svg)
+![svg](Blog_files/Blog_97_0.svg)
     
 
 
@@ -712,41 +722,41 @@ For this one you want to perform addition of two numbers. Here are the steps.
 add().input("683+345")
 ```
 
-0) Split into parts. Convert to ints. Add
+0. Split into parts (challenge 6). Convert to ints. Add.
 
-> "683+345" => [0, 0, 0, 9, 12, 8]
+> “683+345” => [0, 0, 0, 9, 12, 8]
 
-1) Compute the carry terms. Three possibilities: 1 has carry, 0 no carry, < maybe has carry. 
+1. Compute the carry terms. Three possibilities: definitely receives carry (“1”), definitely doesn't receive carry (“0”), maybe receives carry (“<”).Because we are only adding two numbers, the only  case in which a position might receive a carry is if the position after it sums to 9. In that case, it will receive a carry if and only if the position after *that* receives a carry.
 
-> [0, 0, 0, 9, 12, 8] => "00<100"
+> [0, 0, 0, 9, 12, 8] => “00<100”
 
-2) Slide the carry coefficients
+2. Slide the carry coefficients. A position that might receive a carry will get one if and only if the next position receives a carry - and so on down the chain until the next definite carry/no carry.
 
-> "00<100" => 001100"
+> “00<100” => 001100"
 
-3) Complete the addition.
+3. Complete the addition.
 
-Each of these is 1 line of code. The full system is 6 attentions. (Although Gail says that if you are careful you can do it in 5!). 
-
+Each of these is 1 line of code. The full system is 6 layers. (if you are careful you can do it in 5!).
 
 
 ```
 def add(sop=tokens):
     # 0) Parse and add
-    x = atoi(split("+", 0, sop)) + atoi(split("+", 1, sop))
+    x = atoi(split("+", True, sop)) \
+        + atoi(split("+", False, sop))
     # 1) Check for carries 
-    carry = shift(-1, "0", where(x > 9, "1", where(x == 9, "<", "0")))
-    # 2) In parallel, slide carries to their column                                         
-    carries = atoi(slide(carry != "<", carry))
-    # 3) Add in carries.                                                                                  
-    return (x + carries) % 10
+    gets_carry = shift(-1, "0", where(x > 9, "1", where(x == 9, "<", "0")))
+    # 2) Slide carries to their columns - all in one parallel go!                                         
+    gets_carry = atoi(slide(gets_carry != "<", gets_carry))
+    # 3) Add in carries, and remove overflow from original addition.                                                                                  
+    return (x + gets_carry) % 10
 add()("683+345")
 ```
 
 
 
     
-![svg](Blog_files/Blog_98_0.svg)
+![svg](Blog_files/Blog_99_0.svg)
     
 
 
