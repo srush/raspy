@@ -234,7 +234,7 @@ def wrap(x: SOpLike) -> SOp:
     if (
         isinstance(x, float)
         or isinstance(x, int)
-        or (isinstance(x, str) and len(x) == 1)
+        or isinstance(x, str)
     ):
         return repeat(x)  # type: ignore
     return raw(x)  # type: ignore
